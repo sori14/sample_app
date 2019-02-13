@@ -1,6 +1,6 @@
 class User < ApplicationRecord
   validates :name, presence: true, length: {maximum: 50}
-  attr_accessor :remember_token, :activation_token
+  attr_accessor :remember_token, :activation_token, :reset_token
   before_save :downcase_email
   before_create :create_activation_digest
 
@@ -54,6 +54,23 @@ class User < ApplicationRecord
     UserMailer.account_activation(self).deliver_now
   end
 
+  # パスワード再設定の属性を設定する
+  def create_reset_digest
+    self.reset_token = User.new_token
+    update_attribute(:reset_digest, User.digest(reset_token))
+    update_attribute(:reset_send_at, Time.zone.now)
+  end
+
+  # パスワード再設定のメールを送信する
+  def send_password_reset_email
+    UserMailer.password_reset(self).deliver_now
+  end
+
+  # パスワードの期限が切れてる場合はtrueを返す。
+  def password_reset_expired?
+    reset_send_at < 2.hours.ago
+  end
+
   private
     # emailを全て小文字にする
     def downcase_email
@@ -66,4 +83,5 @@ class User < ApplicationRecord
       # ハッシュ化する
       self.activation_digest = User.digest(self.activation_token)
     end
+
 end
